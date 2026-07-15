@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Ünïcodé.Tëst" tests="3" failures="1" skipped="1">
+  <testcase name="日本語のテスト_🎉" classname="Tëst.Ünïcode" time="0.001"/>
+  <testcase name="Ω≈ç√∫˜µ" classname="Tëst.Ünïcode" time="0.002">
+    <failure message="café ≠ résumé — naïve façade">Straße: 100% — €5 › £4 ≥ €3</failure>
+  </testcase>
+  <testcase name="кириллица_и_ελληνικά" classname="Tëst.Ünïcode" time="0.003">
+    <skipped message="пропущено — παραλείπεται"/>
+  </testcase>
+</testsuite>

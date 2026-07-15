@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
+<coverage line-rate="1.0000" branch-rate="0.0000" lines-covered="13" lines-valid="13" branches-covered="0" branches-valid="0" complexity="0" version="testtranslator-1.0" timestamp="0">
+  <sources>
+    <source>.</source>
+  </sources>
+  <packages>
+    <package name="home/runner/work/macaroons.js/macaroons.js/src/main/ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+      <classes>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/Base64Tools.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/Base64Tools.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/BufferTools.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/BufferTools.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CaveatPacket.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CaveatPacket.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CaveatPacketType.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CaveatPacketType.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CryptoTools.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/CryptoTools.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/Macaroon.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/Macaroon.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsBuilder.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsBuilder.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsConstants.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsConstants.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsDeSerializer.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsDeSerializer.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsSerializer.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsSerializer.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsVerifier.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/MacaroonsVerifier.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/ThirdPartyPacket.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/ThirdPartyPacket.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <package name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/verifier" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+      <classes>
+        <class name="home/runner/work/macaroons.js/macaroons.js/src/main/ts/verifier/TimestampCaveatVerifier.ts" filename="home/runner/work/macaroons.js/macaroons.js/src/main/ts/verifier/TimestampCaveatVerifier.ts" line-rate="1.0000" branch-rate="0.0000" complexity="0">
+          <methods></methods>
+          <lines>
+            <line number="1" hits="1" branch="false"></line>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

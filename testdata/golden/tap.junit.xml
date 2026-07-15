@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="tap" tests="5" failures="0" errors="0" skipped="0" time="0.000">
+  <testsuite name="tap" tests="5" failures="0" errors="0" skipped="0" time="0.000">
+    <testcase name="1" time="0.000"></testcase>
+    <testcase name="2" time="0.000"></testcase>
+    <testcase name="3" time="0.000"></testcase>
+    <testcase name="4" time="0.000"></testcase>
+    <testcase name="5" time="0.000"></testcase>
+  </testsuite>
+</testsuites>

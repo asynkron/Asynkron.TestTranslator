@@ -233,7 +233,7 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 				}
 			case ts.status == results.StatusSkipped:
 				tc.Status = results.StatusSkipped
-				tc.SkipMessage = firstLine(strings.TrimSpace(ts.output.String()))
+				tc.SkipMessage = skipReason(ts.output.String())
 			default:
 				tc.Status = results.StatusPassed
 			}
@@ -262,6 +262,21 @@ func firstLine(s string) string {
 		if l != "" {
 			return l
 		}
+	}
+	return ""
+}
+
+// skipReason extracts the human-readable skip reason from a skipped test's
+// captured output, ignoring test2json framing lines such as "=== RUN" and
+// "--- SKIP" so the returned message is the actual reason (typically a
+// "foo_test.go:NN: ..." line) rather than the run banner.
+func skipReason(s string) string {
+	for _, l := range strings.Split(s, "\n") {
+		t := strings.TrimSpace(l)
+		if t == "" || strings.HasPrefix(t, "===") || strings.HasPrefix(t, "---") {
+			continue
+		}
+		return t
 	}
 	return ""
 }

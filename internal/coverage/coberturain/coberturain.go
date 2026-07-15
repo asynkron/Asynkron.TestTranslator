@@ -11,6 +11,7 @@
 package coberturain
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/asynkron/testtranslator/internal/coverage"
+	"github.com/asynkron/testtranslator/internal/xmlguard"
 )
 
 func init() {
@@ -94,16 +96,23 @@ func (Adapter) Parse(r io.Reader, opts coverage.Options) (*coverage.Report, erro
 		limit = defaultMaxInput
 	}
 	lr := &io.LimitedReader{R: r, N: limit + 1}
-	dec := xml.NewDecoder(lr)
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("coberturain: read: %w", err)
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("coberturain: input exceeds %d byte limit", limit)
+	}
+	if err := xmlguard.Check(data, xmlguard.DefaultMaxDepth); err != nil {
+		return nil, fmt.Errorf("coberturain: %w", err)
+	}
+	dec := xml.NewDecoder(bytes.NewReader(data))
 	dec.Strict = true
 	dec.Entity = map[string]string{}
 
 	var doc xmlCoverage
 	if err := dec.Decode(&doc); err != nil {
 		return nil, fmt.Errorf("coberturain: malformed XML: %w", err)
-	}
-	if lr.N <= 0 {
-		return nil, fmt.Errorf("coberturain: input exceeds %d byte limit", limit)
 	}
 	if doc.XMLName.Local != "coverage" {
 		return nil, fmt.Errorf("coberturain: root element is %q, want <coverage>", doc.XMLName.Local)

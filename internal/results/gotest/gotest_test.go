@@ -40,7 +40,9 @@ const passFailSkip = `
 {"Action":"output","Package":"example/pkg","Test":"TestFail","Output":"    foo_test.go:10: Error: not equal\n"}
 {"Action":"fail","Package":"example/pkg","Test":"TestFail","Elapsed":0.01}
 {"Action":"run","Package":"example/pkg","Test":"TestSkip"}
-{"Action":"output","Package":"example/pkg","Test":"TestSkip","Output":"    foo_test.go:20: skipping\n"}
+{"Action":"output","Package":"example/pkg","Test":"TestSkip","Output":"=== RUN   TestSkip\n"}
+{"Action":"output","Package":"example/pkg","Test":"TestSkip","Output":"    foo_test.go:20: skipping on CI\n"}
+{"Action":"output","Package":"example/pkg","Test":"TestSkip","Output":"--- SKIP: TestSkip (0.00s)\n"}
 {"Action":"skip","Package":"example/pkg","Test":"TestSkip","Elapsed":0}
 {"Action":"pass","Package":"example/pkg","Elapsed":0.03}
 `
@@ -60,6 +62,18 @@ func TestPassFailSkip(t *testing.T) {
 	}
 	if !strings.Contains(fc.Failure.Message, "Error:") {
 		t.Errorf("failure message not extracted: %q", fc.Failure.Message)
+	}
+
+	// The skip message must be the reason, not the "=== RUN" framing banner.
+	sc := findCase(r, "example/pkg", "TestSkip")
+	if sc == nil || sc.Status != results.StatusSkipped {
+		t.Fatalf("TestSkip not skipped: %+v", sc)
+	}
+	if !strings.Contains(sc.SkipMessage, "skipping on CI") {
+		t.Errorf("skip message = %q, want the reason (not the RUN banner)", sc.SkipMessage)
+	}
+	if strings.Contains(sc.SkipMessage, "RUN") {
+		t.Errorf("skip message leaked the RUN banner: %q", sc.SkipMessage)
 	}
 }
 

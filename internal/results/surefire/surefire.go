@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/testtranslator/internal/xmlguard"
 )
 
 func init() {
@@ -84,6 +85,9 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 	}
 	if int64(len(data)) > limit {
 		return nil, fmt.Errorf("surefire: input exceeds %d byte limit", limit)
+	}
+	if err := xmlguard.Check(data, xmlguard.DefaultMaxDepth); err != nil {
+		return nil, fmt.Errorf("surefire: %w", err)
 	}
 
 	root, err := detectRoot(data)

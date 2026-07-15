@@ -67,11 +67,20 @@ func mergeFile(dst, src *File) error {
 	}
 	for _, sl := range src.Lines {
 		if idx, ok := lineByNum[sl.Number]; ok {
+			// Execution counts genuinely add across runs, so line hits are summed.
 			dst.Lines[idx].Hits += sl.Hits
 			if sl.Branch {
 				dst.Lines[idx].Branch = true
-				dst.Lines[idx].BranchesCovered += sl.BranchesCovered
-				dst.Lines[idx].BranchesTotal += sl.BranchesTotal
+				// The number of branches on a line is structural and identical
+				// across runs, so the total is the max, not the sum (summing would
+				// double the denominator and duplicate Cobertura <condition> nodes).
+				// Covered is a best-effort union: the larger count, capped at the
+				// total. Per-branch identity is not retained in the aggregate model,
+				// so this can undercount a true union but never inflates it.
+				dst.Lines[idx].BranchesTotal = maxInt(dst.Lines[idx].BranchesTotal, sl.BranchesTotal)
+				dst.Lines[idx].BranchesCovered = minInt(
+					maxInt(dst.Lines[idx].BranchesCovered, sl.BranchesCovered),
+					dst.Lines[idx].BranchesTotal)
 			}
 		} else {
 			dst.Lines = append(dst.Lines, sl)
@@ -87,10 +96,41 @@ func mergeFile(dst, src *File) error {
 			dst.Metrics[m] = sc
 			continue
 		}
-		dc.Covered += sc.Covered
-		dc.Total += sc.Total
+		// Totals (statements, branches, functions, ...) are structural properties
+		// of the file, so they are combined with max rather than summed. Covered
+		// is a best-effort union capped at the total.
+		dc.Total = maxInt64(dc.Total, sc.Total)
+		dc.Covered = minInt64(maxInt64(dc.Covered, sc.Covered), dc.Total)
 		dc.Derived = dc.Derived || sc.Derived
 		dst.Metrics[m] = dc
 	}
 	return nil
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }

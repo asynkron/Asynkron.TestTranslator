@@ -4,6 +4,7 @@
 package trx
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/testtranslator/internal/xmlguard"
 )
 
 func init() {
@@ -66,7 +68,17 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 		limit = defaultMaxInput
 	}
 	lr := &io.LimitedReader{R: r, N: limit + 1}
-	dec := xml.NewDecoder(lr)
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("trx: read: %w", err)
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("trx: input exceeds %d byte limit", limit)
+	}
+	if err := xmlguard.Check(data, xmlguard.DefaultMaxDepth); err != nil {
+		return nil, fmt.Errorf("trx: %w", err)
+	}
+	dec := xml.NewDecoder(bytes.NewReader(data))
 	dec.Strict = true
 	dec.Entity = map[string]string{}
 
@@ -76,9 +88,6 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 	}
 	if run.XMLName.Local != "TestRun" {
 		return nil, fmt.Errorf("trx: root element is %q, want <TestRun>", run.XMLName.Local)
-	}
-	if lr.N <= 0 {
-		return nil, fmt.Errorf("trx: input exceeds %d byte limit", limit)
 	}
 
 	classByID := map[string]string{}

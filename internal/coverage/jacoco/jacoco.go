@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/asynkron/testtranslator/internal/coverage"
+	"github.com/asynkron/testtranslator/internal/xmlguard"
 )
 
 func init() {
@@ -102,6 +103,9 @@ func (Adapter) Parse(r io.Reader, opts coverage.Options) (*coverage.Report, erro
 		return nil, fmt.Errorf("jacoco: input exceeds %d byte limit", limit)
 	}
 	raw = stripDoctype(raw)
+	if err := xmlguard.Check(raw, xmlguard.DefaultMaxDepth); err != nil {
+		return nil, fmt.Errorf("jacoco: %w", err)
+	}
 
 	dec := xml.NewDecoder(strings.NewReader(string(raw)))
 	dec.Strict = true

@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build, vet, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
+
+      - name: Verify formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with race detector and coverage
+        run: go test -race -coverprofile=cover.out ./...
+
+      - name: Self-conversion smoke test
+        run: |
+          go build -o testtranslator ./cmd/testtranslator
+          go test -json ./internal/pathutil/... > gotest.jsonl || true
+          ./testtranslator results --format go-test-json --input gotest.jsonl --output junit.xml
+          ./testtranslator validate junit --input junit.xml
+          ./testtranslator coverage --format go-coverprofile \
+            --input cover.out --go-module github.com/asynkron/testtranslator \
+            --output coverage.xml
+          ./testtranslator validate cobertura --input coverage.xml
+
+  lint:
+    name: staticcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+
+  fuzz-smoke:
+    name: fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run each fuzz target briefly
+        run: |
+          set -e
+          for target in $(grep -rl 'func Fuzz' --include='*_test.go' . | xargs -I{} dirname {} | sort -u); do
+            for fn in $(grep -oh 'func Fuzz[A-Za-z0-9_]*' $target/*_test.go | sed 's/func //' | sort -u); do
+              echo "== fuzzing $fn in $target =="
+              go test -run '^$' -fuzz "^${fn}$" -fuzztime=20s "./$target"
+            done
+          done
+
+  licenses:
+    name: license checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Require license and notice files
+        run: |
+          test -f LICENSE
+          test -f NOTICE
+          test -f THIRD_PARTY_NOTICES.md
+      - name: Fail on third-party Go module dependencies
+        run: |
+          # The binary must stay self-contained (standard library only).
+          deps=$(go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... \
+            | grep -v '^github.com/asynkron/testtranslator' || true)
+          if [ -n "$deps" ]; then
+            echo "Unexpected third-party dependencies:"
+            echo "$deps"
+            exit 1
+          fi
+      - name: Require PROVENANCE for every real fixture directory
+        run: |
+          set -e
+          for d in testdata/real/*/; do
+            if [ -z "$(ls -A "$d" 2>/dev/null | grep -v PROVENANCE.md)" ]; then
+              continue
+            fi
+            test -f "${d}PROVENANCE.md" || { echo "missing ${d}PROVENANCE.md"; exit 1; }
+          done

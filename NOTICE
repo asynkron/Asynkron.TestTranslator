@@ -1,0 +1,10 @@
+testtranslator
+Copyright 2026 Asynkron AB
+
+This product includes software developed at Asynkron AB.
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+Third-party test fixtures redistributed under testdata/real/ remain under
+their original licenses; see each directory's PROVENANCE.md and the
+THIRD_PARTY_NOTICES.md file at the repository root.

@@ -20,13 +20,13 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/asynkron/testtranslator/internal/adapters"
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/coverage/cobertura"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/pathutil"
-	"github.com/asynkron/testtranslator/internal/results"
-	"github.com/asynkron/testtranslator/internal/results/junit"
+	_ "github.com/asynkron/Asynkron.TestTranslator/internal/adapters"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage/cobertura"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results/junit"
 )
 
 // dirFormat maps a testdata/real subdirectory to the adapter that should parse

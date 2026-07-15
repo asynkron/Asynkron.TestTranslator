@@ -35,7 +35,7 @@ heuristic parsing:
 ## Install
 
 ```sh
-go install github.com/asynkron/testtranslator/cmd/testtranslator@latest
+go install github.com/asynkron/Asynkron.TestTranslator/cmd/testtranslator@latest
 ```
 
 ## Usage
@@ -109,7 +109,7 @@ Besides the CLI, the conversion pipeline is exposed as a stable Go package so yo
 can convert in-process without shelling out:
 
 ```go
-import "github.com/asynkron/testtranslator"
+import "github.com/asynkron/Asynkron.TestTranslator"
 ```
 
 ```go

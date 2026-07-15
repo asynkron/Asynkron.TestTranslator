@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/pathutil"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
 )
 
 // validFixture is a minimal but representative coverage-final.json with two

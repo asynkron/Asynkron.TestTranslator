@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/asynkron/testtranslator"
+	"github.com/asynkron/Asynkron.TestTranslator"
 )
 
 // Convert a Go `go test -json` stream into JUnit XML in-process.

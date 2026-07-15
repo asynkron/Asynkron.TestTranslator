@@ -5,7 +5,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
 )
 
 // Options carries conversion configuration common to result adapters.

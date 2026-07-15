@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator"
+	"github.com/asynkron/Asynkron.TestTranslator"
 )
 
 func readFixture(t *testing.T, rel string) []byte {
@@ -88,7 +88,7 @@ func TestConvertCoverageLCOV(t *testing.T) {
 func TestConvertCoverageGoProfileWithModule(t *testing.T) {
 	in := readFixture(t, "go-coverprofile/pathutil-set.out")
 	out, _, err := testtranslator.ConvertCoverage("go-coverprofile", bytes.NewReader(in), testtranslator.CoverageOptions{
-		GoModule: "github.com/asynkron/testtranslator",
+		GoModule: "github.com/asynkron/Asynkron.TestTranslator",
 	})
 	if err != nil {
 		t.Fatalf("convert: %v", err)

@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
 )
 
 const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n" +

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/asynkron/testtranslator/internal/atomicio"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/results"
-	"github.com/asynkron/testtranslator/internal/results/junit"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/atomicio"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results/junit"
 )
 
 // runResults implements `testtranslator results`.

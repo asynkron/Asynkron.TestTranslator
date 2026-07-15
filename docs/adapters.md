@@ -11,7 +11,7 @@ package myfmt
 import (
 	"io"
 
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 func init() {

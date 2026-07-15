@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 const doc = `<?xml version="1.0" encoding="UTF-8"?>

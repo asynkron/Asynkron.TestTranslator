@@ -6,8 +6,8 @@ package main
 import (
 	"os"
 
-	_ "github.com/asynkron/testtranslator/internal/adapters"
-	"github.com/asynkron/testtranslator/internal/cli"
+	_ "github.com/asynkron/Asynkron.TestTranslator/internal/adapters"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/cli"
 )
 
 func main() {

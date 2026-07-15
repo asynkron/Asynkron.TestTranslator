@@ -3,7 +3,7 @@ package cli
 import (
 	"strings"
 
-	"github.com/asynkron/testtranslator/internal/manifest"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/manifest"
 )
 
 // toolVersion is reported in generated manifests.

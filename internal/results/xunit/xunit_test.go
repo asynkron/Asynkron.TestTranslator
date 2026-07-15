@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 // validV2 is a representative xUnit.net v2 document with the <assemblies>

@@ -10,7 +10,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
 )
 
 // Streams bundles the process IO so commands are testable without globals.

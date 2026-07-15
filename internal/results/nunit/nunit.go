@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asynkron/testtranslator/internal/results"
-	"github.com/asynkron/testtranslator/internal/xmlguard"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/xmlguard"
 )
 
 func init() {

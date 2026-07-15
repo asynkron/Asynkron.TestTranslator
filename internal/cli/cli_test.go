@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	// Register all adapters for end-to-end CLI tests.
-	_ "github.com/asynkron/testtranslator/internal/adapters"
+	_ "github.com/asynkron/Asynkron.TestTranslator/internal/adapters"
 )
 
 // run invokes the CLI with the given stdin and returns exit code, stdout, stderr.

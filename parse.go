@@ -3,10 +3,10 @@ package testtranslator
 import (
 	"io"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/pathutil"
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 // ParseResults parses test-result data of the named format into the structured

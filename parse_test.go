@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/asynkron/testtranslator"
+	"github.com/asynkron/Asynkron.TestTranslator"
 )
 
 func TestParseResultsModel(t *testing.T) {
@@ -51,7 +51,7 @@ func TestParseResultsModel(t *testing.T) {
 func TestParseCoverageGoStatementsVsLines(t *testing.T) {
 	in := readFixture(t, "go-coverprofile/pathutil-set.out")
 	rep, _, err := testtranslator.ParseCoverage("go-coverprofile", bytes.NewReader(in), testtranslator.CoverageOptions{
-		GoModule: "github.com/asynkron/testtranslator",
+		GoModule: "github.com/asynkron/Asynkron.TestTranslator",
 	})
 	if err != nil {
 		t.Fatalf("parse: %v", err)

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/asynkron/testtranslator/internal/coverage/cobertura"
-	"github.com/asynkron/testtranslator/internal/results/junit"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage/cobertura"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results/junit"
 )
 
 // runValidate implements `testtranslator validate junit|cobertura --input FILE`.

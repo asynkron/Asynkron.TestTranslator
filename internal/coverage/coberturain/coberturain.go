@@ -19,8 +19,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/xmlguard"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/xmlguard"
 )
 
 func init() {

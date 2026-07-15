@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
 )
 
 func init() {

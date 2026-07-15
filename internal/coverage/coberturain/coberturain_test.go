@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
 )
 
 const validCobertura = `<?xml version="1.0"?>

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 func sampleReport(t *testing.T) *results.Report {

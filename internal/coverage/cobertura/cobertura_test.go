@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
 )
 
 func sample(t *testing.T) *coverage.Report {

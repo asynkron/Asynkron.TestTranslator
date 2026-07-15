@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 // xmlHeader is prepended to every document.

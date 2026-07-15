@@ -3,7 +3,7 @@ package coverage
 import (
 	"fmt"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
 )
 
 // Merge combines multiple coverage reports under an explicit merge mode. Mode

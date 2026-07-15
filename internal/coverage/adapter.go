@@ -5,8 +5,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/pathutil"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
 )
 
 // Options carries conversion configuration common to coverage adapters.

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
 )
 
 func parse(t *testing.T, stream string) (*results.Report, *diagnostics.Collector) {

@@ -12,8 +12,8 @@ are genuine tool output, not hand-written.
 
 Each file exercises one of the three Go coverage modes (`set`, `count`,
 `atomic`), so the adapter is proven against all block-count variants. Paths are
-Go import paths (`github.com/asynkron/testtranslator/internal/pathutil/...`);
-supply `--go-module github.com/asynkron/testtranslator` (or `--repo-root`) to
+Go import paths (`github.com/asynkron/Asynkron.TestTranslator/internal/pathutil/...`);
+supply `--go-module github.com/asynkron/Asynkron.TestTranslator` (or `--repo-root`) to
 reroot them to repository-relative form.
 
 ## Regenerating

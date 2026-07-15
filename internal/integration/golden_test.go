@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/asynkron/testtranslator/internal/coverage"
-	"github.com/asynkron/testtranslator/internal/coverage/cobertura"
-	"github.com/asynkron/testtranslator/internal/diagnostics"
-	"github.com/asynkron/testtranslator/internal/pathutil"
-	"github.com/asynkron/testtranslator/internal/results"
-	"github.com/asynkron/testtranslator/internal/results/junit"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/coverage/cobertura"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/results/junit"
 )
 
 // updateGolden regenerates the checked-in golden files instead of comparing.

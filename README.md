@@ -103,6 +103,51 @@ testtranslator manifest \
   --output test-artifacts.json
 ```
 
+## Use as a Go library
+
+Besides the CLI, the conversion pipeline is exposed as a stable Go package so you
+can convert in-process without shelling out:
+
+```go
+import "github.com/asynkron/testtranslator"
+```
+
+```go
+// Render to the standard interchange documents:
+junitXML, diags, err := testtranslator.ConvertResults("go-test-json", r)
+coberturaXML, diags, err := testtranslator.ConvertCoverage("lcov", r,
+    testtranslator.CoverageOptions{RepoRoot: "."})
+
+// …or parse to the structured model, when you want the data programmatically
+// (persist it, join it, compute your own metrics) instead of a rendered document:
+report, diags, err := testtranslator.ParseResults("go-test-json", r)
+//   report.Totals, report.Suites[i].Cases[j].{Status, File, Failure, ...}
+cov, diags, err := testtranslator.ParseCoverage("lcov", r,
+    testtranslator.CoverageOptions{RepoRoot: "."})
+//   cov.Files[i].{Path, Metrics[MetricStatements|MetricBranches|...]}
+//   coverage keeps statements/lines/branches/functions as distinct metrics,
+//   each marked native or derived — Go statements are never mislabeled as lines.
+
+// Discover supported formats and their aliases
+for _, f := range testtranslator.ResultFormats() { /* f.ID, f.Aliases */ }
+for _, f := range testtranslator.CoverageFormats() { /* ... */ }
+```
+
+The `Parse*` functions return JSON-tagged model types (`TestReport`,
+`CoverageReport`) that are safe to serialize and persist. The `Convert*`
+functions render the same parse to JUnit/Cobertura XML.
+
+`format` is any canonical id or alias from the tables below. Conversion is
+explicit (no auto-detection), deterministic, and the returned document is
+validated before it is handed back. `diags` reports lossy or unsupported
+mappings — they never fail the conversion, and nothing is silently dropped; an
+error is returned only for malformed or mismatched input. The input is read
+through a bounded reader, so an oversized stream is rejected rather than
+exhausting memory.
+
+The `internal/` packages remain private; this top-level package is the supported
+API surface.
+
 ## Supported formats
 
 ### Test results → JUnit XML

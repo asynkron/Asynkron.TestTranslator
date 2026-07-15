@@ -240,6 +240,42 @@ func TestParseBufferedBraceSubtest(t *testing.T) {
 	}
 }
 
+// A "1..0 # SKIP <reason>" plan skips the whole run with no result lines. The
+// reason must not be dropped: it becomes a synthetic skipped testcase plus a
+// diagnostic note.
+func TestParsePlanSkipAll(t *testing.T) {
+	const src = "1..0 # SKIP no fixtures on this platform\n"
+	rep, diag, err := parse(t, src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	suite := rep.Suites[0]
+	if len(suite.Cases) != 1 {
+		t.Fatalf("want 1 synthetic skipped case, got %d", len(suite.Cases))
+	}
+	c := suite.Cases[0]
+	if c.Status != results.StatusSkipped {
+		t.Errorf("status = %v, want Skipped", c.Status)
+	}
+	if !strings.Contains(c.SkipMessage, "no fixtures on this platform") {
+		t.Errorf("skip reason lost: %q", c.SkipMessage)
+	}
+	if diag.Len() == 0 {
+		t.Errorf("expected a tap.skipall diagnostic note")
+	}
+}
+
+// A plain "1..0" (no SKIP directive) is a legitimately empty run and stays empty.
+func TestParsePlanEmptyNoSkip(t *testing.T) {
+	rep, _, err := parse(t, "1..0\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n := len(rep.Suites[0].Cases); n != 0 {
+		t.Errorf("want 0 cases for an empty plan, got %d", n)
+	}
+}
+
 func TestParsePlanLast(t *testing.T) {
 	const src = `ok 1 first
 not ok 2 second

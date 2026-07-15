@@ -208,7 +208,7 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 		}
 
 		// Remaining lines are structural: a plan "1..N" or a result "ok"/"not ok".
-		planN, isPlan := parsePlan(trimmed)
+		planN, planSkipAll, planSkipReason, isPlan := parsePlan(trimmed)
 		isResult := isResultLine(trimmed)
 		if !isPlan && !isResult {
 			// TAP treats unknown lines as ignorable noise, but we surface it so
@@ -244,6 +244,21 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 			}
 			top().havePlan = true
 			top().planCount = planN
+			// A plan carrying a "# SKIP" directive declares the run skipped; never
+			// drop that reason. When the plan is "1..0" there are no result lines
+			// to carry it, so emit a synthetic skipped testcase; otherwise the
+			// result lines already represent the tests and only the note is needed.
+			if planSkipAll {
+				opts.Diag.Notef("tap.skipall", opts.SourceName,
+					"plan declares all tests skipped: %s", firstNonEmpty(planSkipReason, "(no reason given)"))
+				if planN == 0 {
+					sc := &pendingCase{frame: top()}
+					sc.tc.Name = "all tests skipped"
+					sc.tc.Status = results.StatusSkipped
+					sc.tc.SkipMessage = planSkipReason
+					cases = append(cases, sc)
+				}
+			}
 			cur = nil
 			justClosed = nil
 			continue
@@ -413,26 +428,32 @@ func anyPlan(frames []*frame) bool {
 }
 
 // parsePlan parses a TAP plan line "1..N" (N >= 0) and reports whether trimmed
-// is a plan line.
-func parsePlan(trimmed string) (int, bool) {
+// is a plan line. A "1..0 # SKIP <reason>" plan declares the whole run skipped;
+// skipAll and reason capture that directive so the reason is never dropped.
+func parsePlan(trimmed string) (n int, skipAll bool, reason string, ok bool) {
 	idx := strings.Index(trimmed, "..")
 	if idx <= 0 {
-		return 0, false
+		return 0, false, "", false
 	}
 	lo := trimmed[:idx]
 	rest := trimmed[idx+2:]
-	// A plan may carry a trailing "# SKIP" directive; ignore it for counting.
+	// A plan may carry a trailing "# SKIP" directive; separate it from the count.
 	if h := strings.IndexByte(rest, '#'); h >= 0 {
+		directive := strings.TrimSpace(rest[h+1:])
 		rest = strings.TrimSpace(rest[:h])
+		if directiveKind(directive) == dirSkip {
+			skipAll = true
+			reason = directiveReason(directive)
+		}
 	}
 	if lo != "1" {
-		return 0, false
+		return 0, false, "", false
 	}
-	n, err := strconv.Atoi(strings.TrimSpace(rest))
-	if err != nil || n < 0 {
-		return 0, false
+	num, err := strconv.Atoi(strings.TrimSpace(rest))
+	if err != nil || num < 0 {
+		return 0, false, "", false
 	}
-	return n, true
+	return num, skipAll, reason, true
 }
 
 // parseResult parses a single "ok"/"not ok" result line into a pending case and

@@ -137,6 +137,109 @@ func TestParseNoPlanNoResults(t *testing.T) {
 	}
 }
 
+// A TAP 13 subtest with its own inner plan must not be mistaken for a duplicate
+// top-level plan (regression: this used to fail the whole parse), and its
+// children must be flattened under the parent's name without double-counting the
+// parent summary line.
+func TestParseNestedSubtest(t *testing.T) {
+	const src = `TAP version 13
+1..1
+# Subtest: parent
+    ok 1 - childA
+    ok 2 - childB
+    1..2
+ok 1 - parent
+`
+	rep, diag, err := parse(t, src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	suite := rep.Suites[0]
+	if len(suite.Cases) != 2 {
+		t.Fatalf("want 2 flattened child cases, got %d: %+v", len(suite.Cases), suite.Cases)
+	}
+	if suite.Cases[0].Name != "parent / 1 childA" {
+		t.Errorf("child 1 name = %q, want %q", suite.Cases[0].Name, "parent / 1 childA")
+	}
+	if suite.Cases[1].Name != "parent / 2 childB" {
+		t.Errorf("child 2 name = %q, want %q", suite.Cases[1].Name, "parent / 2 childB")
+	}
+	if diag.Len() != 0 {
+		t.Errorf("did not expect diagnostics (plans match per level), got %d", diag.Len())
+	}
+}
+
+// A failing subtest must remain visible: the "not ok" summary is kept, named for
+// the subtest, so the failure is never silently dropped.
+func TestParseNestedSubtestFailurePreserved(t *testing.T) {
+	const src = `1..1
+# Subtest: outer
+    not ok 1 - inner fails
+    1..1
+not ok 1 - outer
+`
+	rep, _, err := parse(t, src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	suite := rep.Suites[0]
+	var names []string
+	failed := 0
+	for _, c := range suite.Cases {
+		names = append(names, c.Name)
+		if c.Status == results.StatusFailed {
+			failed++
+		}
+	}
+	if failed == 0 {
+		t.Fatalf("expected the failing subtest to be represented; cases=%v", names)
+	}
+	found := false
+	for _, n := range names {
+		if strings.Contains(n, "outer") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a case named for the failing subtest, got %v", names)
+	}
+}
+
+// node-tap "buffered" subtests wrap the child block in braces. The braces must
+// not be reported as unrecognized lines, and the inner assertions must nest
+// under the parent result's name (regression: braces produced tap.unknownline
+// warnings and a " / 1" name, and the inner plan risked a duplicate-plan error).
+func TestParseBufferedBraceSubtest(t *testing.T) {
+	const src = `not ok 1 - child
+  ---
+  some: diagnostics
+  ...
+{
+    ok 1
+    1..1
+}
+1..1
+`
+	rep, diag, err := parse(t, src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if diag.Len() != 0 {
+		t.Errorf("expected no diagnostics for buffered braces, got %d", diag.Len())
+	}
+	suite := rep.Suites[0]
+	names := make(map[string]results.Status)
+	for _, c := range suite.Cases {
+		names[c.Name] = c.Status
+	}
+	if st, ok := names["1 child"]; !ok || st != results.StatusFailed {
+		t.Errorf("want a failed \"1 child\" parent case, got %v", names)
+	}
+	if _, ok := names["child / 1"]; !ok {
+		t.Errorf("want the inner assertion nested as \"child / 1\", got %v", names)
+	}
+}
+
 func TestParsePlanLast(t *testing.T) {
 	const src = `ok 1 first
 not ok 2 second

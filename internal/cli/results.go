@@ -89,7 +89,14 @@ func readInput(path string, s Streams) ([]byte, string, error) {
 		}
 		return data, "<stdin>", nil
 	}
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, "", fmt.Errorf("read %q: %w", path, err)
+	}
+	defer f.Close()
+	// Bound file input the same way stdin is bounded, so a very large file cannot
+	// be slurped into memory before an adapter's own limit applies.
+	data, err := readAll(f)
 	if err != nil {
 		return nil, "", fmt.Errorf("read %q: %w", path, err)
 	}

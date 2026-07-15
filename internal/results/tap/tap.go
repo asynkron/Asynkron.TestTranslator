@@ -49,12 +49,44 @@ type Adapter struct{}
 // pendingCase accumulates a single result line and any diagnostics or YAML
 // block that follow it before the next result line.
 type pendingCase struct {
-	tc      results.TestCase
-	details strings.Builder // collected YAML block and trailing diagnostics
-	isNotOk bool            // whether the source line was "not ok"
+	tc       results.TestCase
+	details  strings.Builder // collected YAML block and trailing diagnostics
+	isNotOk  bool            // whether the source line was "not ok"
+	frame    *frame          // the nesting level this result belongs to
+	bareName string          // description only (no number), used to name a buffered subtest
 }
 
-// Parse reads a TAP stream and produces one suite named "tap".
+// frame tracks one TAP nesting level: the root stream plus any subtests. TAP 13
+// subtests are indentation-delimited blocks that carry their own plan and result
+// lines and are summarized by a single result line at the parent level.
+type frame struct {
+	parent      *frame
+	name        string // subtest name (empty for the root or an unannounced block)
+	indent      int    // indentation width of this frame's plan/result lines
+	brace       bool   // opened by a node-tap "{" delimiter (closed by "}")
+	havePlan    bool
+	planCount   int
+	resultLines int
+}
+
+// prefix returns the "a / b / " name prefix a frame's ancestry contributes to the
+// names of results nested inside it. The root and anonymous frames contribute
+// nothing of their own.
+func (f *frame) prefix() string {
+	if f == nil || f.parent == nil {
+		return ""
+	}
+	if f.name == "" {
+		return f.parent.prefix()
+	}
+	return f.parent.prefix() + f.name + " / "
+}
+
+// Parse reads a TAP stream and produces one suite named "tap". TAP 13 subtests
+// (indentation-delimited blocks with their own plan and results, summarized by a
+// single result line at the parent level) are flattened into the suite: each
+// child result is named with its "parent / child" path, and the parent's
+// summary line is absorbed rather than emitted as a duplicate.
 func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error) {
 	limit := opts.MaxInputBytes
 	if limit <= 0 {
@@ -69,16 +101,21 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 	var cases []*pendingCase
 	var cur *pendingCase // the result line currently collecting trailing details
 
+	root := &frame{}
+	stack := []*frame{root}
+	allFrames := []*frame{root}
+	var justClosed *frame // a subtest frame just closed by a dedent
+	pendingSubName := ""  // name from a "# Subtest: <name>" announcement
+
 	var (
-		planCount   int
-		havePlan    bool
-		inYAML      bool
-		resultLines int
-		bailed      bool
-		bailReason  string
+		inYAML       bool
+		totalResults int
+		bailed       bool
+		bailReason   string
+		braceDepth   int
 	)
 
-	flush := func() { cur = nil }
+	top := func() *frame { return stack[len(stack)-1] }
 
 	line := 0
 	for sc.Scan() {
@@ -117,7 +154,7 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 		if strings.HasPrefix(trimmed, "Bail out!") {
 			bailed = true
 			bailReason = strings.TrimSpace(strings.TrimPrefix(trimmed, "Bail out!"))
-			flush()
+			cur = nil
 			break
 		}
 
@@ -133,6 +170,10 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 				suiteName = name
 				continue
 			}
+			if name, ok := subtestNameFromComment(body); ok {
+				pendingSubName = name
+				continue
+			}
 			// Attach diagnostics to the current case (they typically explain a
 			// preceding "not ok").
 			if cur != nil {
@@ -142,29 +183,108 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 			continue
 		}
 
-		// Plan line "1..N" (may appear first or last).
-		if n, ok := parsePlan(trimmed); ok {
-			if havePlan {
+		// node-tap "buffered" subtests delimit the child block with braces. Treat
+		// "{" as opening a subtest bound to the preceding result and "}" as closing
+		// it, so braces are not misread as unknown lines and the body nests.
+		if trimmed == "{" {
+			name := ""
+			if cur != nil {
+				name = cur.bareName
+			}
+			f := &frame{parent: top(), name: name, indent: top().indent, brace: true}
+			stack = append(stack, f)
+			allFrames = append(allFrames, f)
+			braceDepth++
+			justClosed = nil
+			cur = nil
+			continue
+		}
+		if trimmed == "}" && braceDepth > 0 {
+			justClosed = top()
+			stack = stack[:len(stack)-1]
+			braceDepth--
+			cur = nil
+			continue
+		}
+
+		// Remaining lines are structural: a plan "1..N" or a result "ok"/"not ok".
+		planN, isPlan := parsePlan(trimmed)
+		isResult := isResultLine(trimmed)
+		if !isPlan && !isResult {
+			// TAP treats unknown lines as ignorable noise, but we surface it so
+			// nothing is silently lost.
+			opts.Diag.Warnf("tap.unknownline", opts.SourceName, "line %d: ignoring unrecognized TAP line %q", line, trimmed)
+			continue
+		}
+
+		// Reconcile the frame stack with this line's indentation before handling
+		// it: deeper opens a subtest, shallower closes one (or more). Inside a
+		// brace-delimited subtest, the braces (not indentation) define nesting.
+		if braceDepth == 0 {
+			indent := indentWidth(raw)
+			if indent > top().indent {
+				f := &frame{parent: top(), name: pendingSubName, indent: indent}
+				pendingSubName = ""
+				stack = append(stack, f)
+				allFrames = append(allFrames, f)
+				justClosed = nil
+				cur = nil
+			} else {
+				for len(stack) > 1 && indent < top().indent {
+					justClosed = top()
+					stack = stack[:len(stack)-1]
+					cur = nil
+				}
+			}
+		}
+
+		if isPlan {
+			if top().havePlan {
 				return nil, fmt.Errorf("tap: line %d: duplicate plan line", line)
 			}
-			havePlan = true
-			planCount = n
-			flush()
+			top().havePlan = true
+			top().planCount = planN
+			cur = nil
+			justClosed = nil
 			continue
 		}
 
-		// Result line: "ok" / "not ok".
-		if pc, ok := parseResult(trimmed, opts); ok {
-			resultLines++
-			flush()
-			cases = append(cases, pc)
-			cur = pc
-			continue
+		// Result line.
+		pc, _ := parseResult(trimmed, opts)
+		pc.bareName = resultDescription(trimmed)
+
+		// A result immediately following a closed subtest is that subtest's
+		// summary. It counts toward the parent plan but must not be duplicated as
+		// a leaf. A failing summary is kept (named for the subtest) so a subtest
+		// failure is never silently dropped; a passing one is absorbed.
+		if justClosed != nil {
+			desc := resultDescription(trimmed)
+			if justClosed.name == "" || justClosed.name == desc {
+				if justClosed.name == "" {
+					justClosed.name = desc
+				}
+				top().resultLines++
+				totalResults++
+				sub := justClosed
+				justClosed = nil
+				if !pc.isNotOk {
+					cur = nil
+					continue
+				}
+				pc.frame = top()
+				pc.tc.Name = sub.name
+				cases = append(cases, pc)
+				cur = pc
+				continue
+			}
+			justClosed = nil
 		}
 
-		// Anything else is unrecognized. TAP treats unknown lines as ignorable
-		// noise, but we surface it as a diagnostic so nothing is silently lost.
-		opts.Diag.Warnf("tap.unknownline", opts.SourceName, "line %d: ignoring unrecognized TAP line %q", line, trimmed)
+		top().resultLines++
+		totalResults++
+		pc.frame = top()
+		cases = append(cases, pc)
+		cur = pc
 	}
 	if err := sc.Err(); err != nil {
 		if err == bufio.ErrTooLong {
@@ -177,14 +297,20 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 	}
 
 	// A stream with neither a plan nor any result lines is not valid TAP.
-	if !havePlan && resultLines == 0 && !bailed {
+	if !anyPlan(allFrames) && totalResults == 0 && !bailed {
 		return nil, fmt.Errorf("tap: input has no plan line and no test result lines; not valid TAP")
 	}
 
-	// Validate the plan against the observed result count (soft check).
-	if havePlan && planCount != resultLines {
-		opts.Diag.Warnf("tap.planmismatch", opts.SourceName,
-			"plan declared %d tests but %d result lines were parsed", planCount, resultLines)
+	// Validate each level's plan against its observed result count (soft check).
+	for _, f := range allFrames {
+		if f.havePlan && f.planCount != f.resultLines {
+			where := ""
+			if f.parent != nil {
+				where = fmt.Sprintf("subtest %q: ", strings.TrimSpace(f.prefix()+f.name))
+			}
+			opts.Diag.Warnf("tap.planmismatch", opts.SourceName,
+				"%splan declared %d tests but %d result lines were parsed", where, f.planCount, f.resultLines)
+		}
 	}
 
 	suite := results.TestSuite{Name: suiteName}
@@ -193,6 +319,7 @@ func (Adapter) Parse(r io.Reader, opts results.Options) (*results.Report, error)
 		if pc.tc.Failure != nil {
 			pc.tc.Failure.Details = details
 		}
+		pc.tc.Name = pc.frame.prefix() + pc.tc.Name
 		if err := suite.AddCase(pc.tc); err != nil {
 			return nil, fmt.Errorf("tap: %w", err)
 		}
@@ -230,6 +357,59 @@ func suiteNameFromComment(body string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// subtestNameFromComment recognizes a "Subtest: <name>" announcement (emitted by
+// node-tap and others before an indented subtest block) and returns its name.
+func subtestNameFromComment(body string) (string, bool) {
+	const prefix = "Subtest:"
+	if strings.HasPrefix(body, prefix) {
+		name := strings.TrimSpace(strings.TrimPrefix(body, prefix))
+		if name != "" {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// indentWidth returns the visual indentation of a line, counting a tab as eight
+// columns. Only relative ordering matters, so the exact tab width is immaterial
+// as long as it is consistent.
+func indentWidth(raw string) int {
+	w := 0
+	for _, r := range raw {
+		switch r {
+		case ' ':
+			w++
+		case '\t':
+			w += 8
+		default:
+			return w
+		}
+	}
+	return w
+}
+
+// resultDescription returns just the human description of a result line, with the
+// leading token, test number, and any trailing directive removed. It is used to
+// match a subtest's summary line against the subtest's announced name.
+func resultDescription(trimmed string) string {
+	rest, _ := matchResultPrefix(trimmed)
+	if h := strings.IndexByte(rest, '#'); h >= 0 {
+		rest = rest[:h]
+	}
+	_, desc := splitNumber(strings.TrimSpace(rest))
+	return desc
+}
+
+// anyPlan reports whether any frame declared a plan line.
+func anyPlan(frames []*frame) bool {
+	for _, f := range frames {
+		if f.havePlan {
+			return true
+		}
+	}
+	return false
 }
 
 // parsePlan parses a TAP plan line "1..N" (N >= 0) and reports whether trimmed

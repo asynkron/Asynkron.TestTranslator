@@ -113,6 +113,49 @@ func TestParseValid(t *testing.T) {
 	}
 }
 
+// lcov >= 2.0 / geninfo emits three-field FN records (start,end,name). The name
+// must be the third field, and FNDA must still match it (regression: the name
+// used to absorb the end line, "10,add", so FNDA created a spurious second
+// function).
+func TestParseFNThreeField(t *testing.T) {
+	input := "SF:src/math.go\nFN:1,10,add\nFNDA:3,add\nDA:1,3\nDA:2,3\nLF:2\nLH:2\nend_of_record\n"
+	report, err := parse(t, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	f := report.Files[0]
+	if len(f.Functions) != 1 {
+		t.Fatalf("expected exactly 1 function, got %d: %+v", len(f.Functions), f.Functions)
+	}
+	fn := f.Functions[0]
+	if fn.Name != "add" {
+		t.Errorf("function name = %q, want %q", fn.Name, "add")
+	}
+	if fn.Line != 1 {
+		t.Errorf("function line = %d, want 1 (start line)", fn.Line)
+	}
+	if fn.Hits != 3 {
+		t.Errorf("function hits = %d, want 3 (FNDA matched)", fn.Hits)
+	}
+}
+
+// A legacy two-field function name that legitimately contains a comma (e.g. a
+// C++ template) must be preserved intact.
+func TestParseFNNameWithComma(t *testing.T) {
+	input := "SF:src/a.cpp\nFN:5,20,std::pair<int, int>\nFNDA:1,std::pair<int, int>\nDA:5,1\nLF:1\nLH:1\nend_of_record\n"
+	report, err := parse(t, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	f := report.Files[0]
+	if len(f.Functions) != 1 {
+		t.Fatalf("expected 1 function, got %d: %+v", len(f.Functions), f.Functions)
+	}
+	if f.Functions[0].Name != "std::pair<int, int>" {
+		t.Errorf("function name = %q, want the full templated name", f.Functions[0].Name)
+	}
+}
+
 func TestParseNoSFRecord(t *testing.T) {
 	// Text with no SF record is not a valid tracefile.
 	_, err := parse(t, "TN:only\nsome noise\nVER:1\n")

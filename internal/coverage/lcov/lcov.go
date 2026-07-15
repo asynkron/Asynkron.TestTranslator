@@ -419,9 +419,13 @@ func parseBRDA(value string) (line int, taken int64, err error) {
 	return line, taken, nil
 }
 
-// parseFN parses an `FN:` value of the form `line,name`.
+// parseFN parses an `FN:` value. LCOV emits two forms: the legacy
+// `FN:<line>,<name>` and the lcov >=2.0 / geninfo `FN:<start_line>,<end_line>,<name>`.
+// They are distinguished by whether a third field is present and the second field
+// is an integer end line (a function name that legitimately contains a comma, e.g.
+// a C++ template, keeps the comma).
 func parseFN(value string) (line int, name string, err error) {
-	parts := strings.SplitN(value, ",", 2)
+	parts := strings.SplitN(value, ",", 3)
 	if len(parts) < 2 {
 		return 0, "", fmt.Errorf("malformed FN directive %q: expected line,name", value)
 	}
@@ -430,6 +434,15 @@ func parseFN(value string) (line int, name string, err error) {
 		return 0, "", fmt.Errorf("invalid FN line number %q", parts[0])
 	}
 	name = strings.TrimSpace(parts[1])
+	if len(parts) == 3 {
+		if _, endErr := strconv.Atoi(name); endErr == nil {
+			// Three-field form: parts[1] is the end line; the name is the remainder.
+			name = strings.TrimSpace(parts[2])
+		} else {
+			// Legacy form whose name contained a comma; rejoin it.
+			name = strings.TrimSpace(parts[1] + "," + parts[2])
+		}
+	}
 	if name == "" {
 		return 0, "", fmt.Errorf("empty FN function name in %q", value)
 	}

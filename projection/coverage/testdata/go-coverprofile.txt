@@ -1,0 +1,7 @@
+mode: set
+github.com/asynkron/faktorial-go/verticals/experiments/coverage/sample.go:10.20,12.2 2 1
+github.com/asynkron/faktorial-go/verticals/experiments/coverage/sample.go:14.30,16.3 2 0
+github.com/asynkron/faktorial-go/verticals/experiments/coverage/sample.go:16.3,18.4 1 1
+github.com/asynkron/faktorial-go/verticals/web/quickdup.go:5.10,7.2 3 1
+github.com/asynkron/faktorial-go/verticals/web/quickdup.go:9.10,11.2 2 0
+golang.org/x/tools/go/packages/packages.go:1.1,2.2 1 1

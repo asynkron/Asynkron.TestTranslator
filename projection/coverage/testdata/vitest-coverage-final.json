@@ -1,0 +1,27 @@
+{
+  "packages/frontend/src/sum.ts": {
+    "path": "packages/frontend/src/sum.ts",
+    "statementMap": {
+      "0": { "start": { "line": 1, "column": 0 }, "end": { "line": 1, "column": 20 } },
+      "1": { "start": { "line": 2, "column": 2 }, "end": { "line": 2, "column": 18 } },
+      "2": { "start": { "line": 3, "column": 2 }, "end": { "line": 3, "column": 12 } }
+    },
+    "s": { "0": 1, "1": 0, "2": 3 },
+    "branchMap": {
+      "0": { "line": 2, "type": "if" }
+    },
+    "b": { "0": [1, 0] },
+    "fnMap": {
+      "0": { "name": "sum" }
+    },
+    "f": { "0": 1 }
+  },
+  "packages/frontend/src/mul.ts": {
+    "path": "packages/frontend/src/mul.ts",
+    "statementMap": {
+      "0": { "start": { "line": 1, "column": 0 }, "end": { "line": 1, "column": 20 } },
+      "1": { "start": { "line": 2, "column": 2 }, "end": { "line": 2, "column": 18 } }
+    },
+    "s": { "0": 0, "1": 0 }
+  }
+}

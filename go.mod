@@ -2,4 +2,4 @@ module github.com/asynkron/Asynkron.TestTranslator
 
 go 1.25.0
 
-require golang.org/x/tools v0.48.0 // indirect
+require golang.org/x/tools v0.48.0

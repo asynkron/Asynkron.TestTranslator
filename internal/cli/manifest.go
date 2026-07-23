@@ -4,10 +4,8 @@ import (
 	"strings"
 
 	"github.com/asynkron/Asynkron.TestTranslator/internal/manifest"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/version"
 )
-
-// toolVersion is reported in generated manifests.
-const toolVersion = "1.0.0"
 
 // runManifest implements `testtranslator manifest --add KIND:FORMAT:PATH ...
 // --output bundle.json`, building an optional bundle that references existing
@@ -54,7 +52,7 @@ func runManifest(args []string, s Streams) int {
 		return fail(s.Err, "manifest requires at least one --add KIND:FORMAT:PATH")
 	}
 
-	m := manifest.New(toolVersion)
+	m := manifest.New(version.Current())
 	for _, spec := range adds {
 		parts := strings.SplitN(spec, ":", 3)
 		if len(parts) != 3 {

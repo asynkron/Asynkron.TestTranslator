@@ -68,34 +68,48 @@ func Parse(format string, r io.Reader) (*Payload, error) {
 
 // Map converts a *testtranslator.TestReport into the test-results.v1 payload.
 //
-// counts.total   = Totals.Tests
-// counts.skipped = Totals.Skipped
-// counts.failed  = Totals.Failures + Totals.Errors (errors folded into failed)
-// counts.passed  = total - failed - skipped
+// Counts and failures are both derived from Suites/Cases rather than trusting
+// the separately stored Totals roll-up. This keeps the payload invariants intact
+// even when a caller supplies a manually constructed or mutated public report.
 //
-// failures[] holds one record for every case whose status is failed or error,
-// so counts.failed stays equal to len(failures) as validateTestPayload demands.
+// failures[] holds one record for every case counted as failed (including an
+// invalid public status), so counts.failed stays equal to len(failures) as
+// validateTestPayload demands.
 func Map(report *testtranslator.TestReport) *Payload {
-	totals := report.Totals
-	counts := Counts{
-		Total:   totals.Tests,
-		Skipped: totals.Skipped,
-		Failed:  totals.Failures + totals.Errors,
+	if report == nil {
+		return &Payload{Failures: []Failure{}}
 	}
-	counts.Passed = counts.Total - counts.Failed - counts.Skipped
 
-	failures := make([]Failure, 0, counts.Failed)
+	counts := Counts{}
+	failures := make([]Failure, 0)
 	for _, suite := range report.Suites {
 		for _, c := range suite.Cases {
-			if c.Status != testtranslator.StatusFailed && c.Status != testtranslator.StatusError {
-				continue
+			counts.Total++
+			switch c.Status {
+			case testtranslator.StatusPassed:
+				counts.Passed++
+			case testtranslator.StatusSkipped:
+				counts.Skipped++
+			case testtranslator.StatusFailed, testtranslator.StatusError:
+				counts.Failed++
+				failures = append(failures, Failure{
+					Suite:   suite.Name,
+					File:    c.File,
+					Test:    c.Name,
+					Message: failureMessage(c.Failure),
+				})
+			default:
+				// Public TestReport values can be constructed without going
+				// through the validated parser. Preserve both payload invariants
+				// and surface the invalid outcome as a failure.
+				counts.Failed++
+				failures = append(failures, Failure{
+					Suite:   suite.Name,
+					File:    c.File,
+					Test:    c.Name,
+					Message: fmt.Sprintf("unknown test status %q", c.Status),
+				})
 			}
-			failures = append(failures, Failure{
-				Suite:   suite.Name,
-				File:    c.File,
-				Test:    c.Name,
-				Message: failureMessage(c.Failure),
-			})
 		}
 	}
 

@@ -35,12 +35,12 @@ import (
 	"go/token"
 	"io"
 	"math"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	testtranslator "github.com/asynkron/Asynkron.TestTranslator"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/pathutil"
 	"golang.org/x/tools/cover"
 )
 
@@ -142,47 +142,43 @@ func normalizeKey(raw, repoRoot, modulePrefix string) (string, error) {
 		return "", fmt.Errorf("%w: NUL byte in %q", ErrUnsafePath, raw)
 	}
 
+	normalizer := pathutil.New(repoRoot, modulePrefix)
+
 	// Import-path style keys (e.g. Go coverprofile) carry the module prefix.
 	if modulePrefix != "" {
-		prefix := strings.TrimSuffix(modulePrefix, "/") + "/"
-		if strings.HasPrefix(key, prefix) {
-			rel := path.Clean(strings.TrimPrefix(key, prefix))
-			return safeRel(rel, raw)
+		normalizedKey := strings.ReplaceAll(key, "\\", "/")
+		prefix := strings.Trim(strings.ReplaceAll(modulePrefix, "\\", "/"), "/") + "/"
+		if strings.HasPrefix(normalizedKey, prefix) {
+			rel, err := normalizer.RelFromImportPath(normalizedKey)
+			if err != nil {
+				return "", fmt.Errorf("%w: %v", ErrUnsafePath, err)
+			}
+			return rel, nil
 		}
 		// Not under the module: it is a dependency or otherwise foreign to the
 		// repository, so it cannot be a repo-relative key.
-		if !filepath.IsAbs(filepath.FromSlash(key)) {
+		if !isAbsoluteCoveragePath(key) {
 			return "", fmt.Errorf("%w: %q is outside module %q", ErrUnsafePath, raw, modulePrefix)
 		}
 	}
 
-	osKey := filepath.FromSlash(key)
-	if filepath.IsAbs(osKey) {
-		root := filepath.Clean(repoRoot)
-		if root == "" || root == "." {
-			return "", fmt.Errorf("%w: absolute path %q needs a repo root", ErrUnsafePath, raw)
-		}
-		rel, err := filepath.Rel(root, filepath.Clean(osKey))
-		if err != nil {
-			return "", fmt.Errorf("%w: %q: %v", ErrUnsafePath, raw, err)
-		}
-		return safeRel(filepath.ToSlash(rel), raw)
-	}
-
-	return safeRel(path.Clean(filepath.ToSlash(key)), raw)
-}
-
-// safeRel rejects a relative path that escapes the root (".." segments) and
-// returns the cleaned POSIX-relative key otherwise.
-func safeRel(rel, raw string) (string, error) {
-	rel = strings.TrimPrefix(rel, "./")
-	if rel == "." || rel == "" {
-		return "", fmt.Errorf("%w: %q resolves to the repo root", ErrUnsafePath, raw)
-	}
-	if rel == ".." || strings.HasPrefix(rel, "../") {
-		return "", fmt.Errorf("%w: %q escapes the repo root", ErrUnsafePath, raw)
+	rel, err := normalizer.Rel(key)
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrUnsafePath, err)
 	}
 	return rel, nil
+}
+
+// isAbsoluteCoveragePath recognizes both POSIX and Windows absolute paths
+// independent of the host OS that happens to run the translator.
+func isAbsoluteCoveragePath(value string) bool {
+	slashed := strings.ReplaceAll(value, "\\", "/")
+	if strings.HasPrefix(slashed, "/") {
+		return true
+	}
+	return len(slashed) >= 3 &&
+		((slashed[0] >= 'A' && slashed[0] <= 'Z') || (slashed[0] >= 'a' && slashed[0] <= 'z')) &&
+		slashed[1] == ':' && slashed[2] == '/'
 }
 
 func ratio(covered, total int) float64 {
@@ -292,6 +288,22 @@ func toFileCoverage(f testtranslator.CoverageFile, language, sourceTool, sourceF
 const goSourceTool = "go test -coverprofile"
 const goSourceFormat = "coverprofile"
 const goLanguage = "go"
+const maxProjectionInputBytes int64 = 256 << 20
+
+func readAllBounded(r io.Reader, context string, limit int64) ([]byte, error) {
+	if r == nil {
+		return nil, fmt.Errorf("%s: nil input", context)
+	}
+	lr := &io.LimitedReader{R: r, N: limit + 1}
+	raw, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", context, err)
+	}
+	if int64(len(raw)) > limit {
+		return nil, fmt.Errorf("%s: input exceeds %d byte limit", context, limit)
+	}
+	return raw, nil
+}
 
 // ParseGoCoverprofile reads a Go coverprofile (the text emitted by
 // `go test -coverprofile`) and translates it into a coverage.v1 Report.
@@ -305,13 +317,16 @@ const goLanguage = "go"
 // Entries whose import path is outside the module are disclosed in
 // UnavailableReasons and dropped, rather than hard-failing the whole report.
 func ParseGoCoverprofile(r io.Reader, repoRoot, modulePath string) (*Report, error) {
-	raw, err := io.ReadAll(r)
+	raw, err := readAllBounded(r, "coverprofile", maxProjectionInputBytes)
 	if err != nil {
-		return nil, fmt.Errorf("coverprofile: %w", err)
+		return nil, err
 	}
 
 	unsafe := newUnsafeCollector()
-	safe := filterGoCoverprofile(raw, repoRoot, modulePath, unsafe)
+	safe, err := filterGoCoverprofile(raw, repoRoot, modulePath, unsafe)
+	if err != nil {
+		return nil, fmt.Errorf("coverprofile: %w", err)
+	}
 
 	rep, _, perr := testtranslator.ParseCoverage("go-coverprofile", bytes.NewReader(safe),
 		testtranslator.CoverageOptions{RepoRoot: repoRoot, GoModule: modulePath})
@@ -447,7 +462,7 @@ func (f goSymbolExtent) coverage(profile *cover.Profile) (covered, total int) {
 // the collector. The mode directive and any structurally-unexpected lines are
 // preserved so testtranslator still sees a well-formed (or honestly malformed)
 // profile.
-func filterGoCoverprofile(raw []byte, repoRoot, modulePath string, unsafe *unsafeCollector) []byte {
+func filterGoCoverprofile(raw []byte, repoRoot, modulePath string, unsafe *unsafeCollector) ([]byte, error) {
 	var out bytes.Buffer
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
@@ -477,7 +492,10 @@ func filterGoCoverprofile(raw []byte, repoRoot, modulePath string, unsafe *unsaf
 		out.WriteString(line)
 		out.WriteByte('\n')
 	}
-	return out.Bytes()
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("read error: %w", err)
+	}
+	return out.Bytes(), nil
 }
 
 // --- Vitest / Istanbul coverage-final.json -----------------------------------
@@ -496,9 +514,9 @@ const vitestLanguage = "typescript"
 // Paths that escape the repo root are disclosed in UnavailableReasons and
 // dropped rather than hard-failing the whole report.
 func ParseVitestIstanbul(r io.Reader, repoRoot string) (*Report, error) {
-	raw, err := io.ReadAll(r)
+	raw, err := readAllBounded(r, "istanbul json", maxProjectionInputBytes)
 	if err != nil {
-		return nil, fmt.Errorf("istanbul json: %w", err)
+		return nil, err
 	}
 
 	unsafe := newUnsafeCollector()

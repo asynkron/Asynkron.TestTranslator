@@ -9,6 +9,7 @@ import (
 
 	// Register all adapters for end-to-end CLI tests.
 	_ "github.com/asynkron/Asynkron.TestTranslator/internal/adapters"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/version"
 )
 
 // run invokes the CLI with the given stdin and returns exit code, stdout, stderr.
@@ -136,6 +137,17 @@ func TestFormatsJSON(t *testing.T) {
 	}
 }
 
+func TestVersionUsesBuildMetadata(t *testing.T) {
+	code, out, errOut := run([]string{"version"}, "")
+	if code != 0 {
+		t.Fatalf("version exit=%d stderr=%s", code, errOut)
+	}
+	want := "testtranslator " + version.Current() + "\n"
+	if out != want {
+		t.Fatalf("version output = %q, want %q", out, want)
+	}
+}
+
 func TestManifestRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	junitPath := filepath.Join(dir, "j.xml")
@@ -155,5 +167,8 @@ func TestManifestRoundTrip(t *testing.T) {
 	data, _ := os.ReadFile(mPath)
 	if !strings.Contains(string(data), `"sha256"`) {
 		t.Fatalf("manifest missing checksums:\n%s", data)
+	}
+	if !strings.Contains(string(data), `"tool_version": "`+version.Current()+`"`) {
+		t.Fatalf("manifest has stale tool version:\n%s", data)
 	}
 }

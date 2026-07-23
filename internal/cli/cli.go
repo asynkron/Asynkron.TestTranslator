@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/asynkron/Asynkron.TestTranslator/internal/diagnostics"
+	"github.com/asynkron/Asynkron.TestTranslator/internal/version"
 )
 
 // Streams bundles the process IO so commands are testable without globals.
@@ -44,7 +45,7 @@ func Run(args []string, s Streams) int {
 		usage(s.Out)
 		return 0
 	case "version", "--version":
-		fmt.Fprintln(s.Out, "testtranslator 1.0.0")
+		fmt.Fprintf(s.Out, "testtranslator %s\n", version.Current())
 		return 0
 	default:
 		fmt.Fprintf(s.Err, "error: unknown command %q\n\n", cmd)

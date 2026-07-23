@@ -269,6 +269,43 @@ func TestParseVitestIstanbulUnsafePath(t *testing.T) {
 	}
 }
 
+func TestParseVitestIstanbulCollectsWindowsPathsIndependentOfHostOS(t *testing.T) {
+	const (
+		root        = `C:\repo`
+		safePath    = `C:\repo\src\app.ts`
+		outsidePath = `D:\other\leak.ts`
+	)
+	entry := func(file string) map[string]any {
+		return map[string]any{
+			"path": file,
+			"statementMap": map[string]any{
+				"0": map[string]any{"start": map[string]any{"line": 1}},
+			},
+			"s": map[string]any{"0": 1},
+		}
+	}
+	body, err := json.Marshal(map[string]any{
+		safePath:    entry(safePath),
+		outsidePath: entry(outsidePath),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := ParseVitestIstanbul(strings.NewReader(string(body)), root)
+	if err != nil {
+		t.Fatalf("ParseVitestIstanbul: %v", err)
+	}
+	if len(report.Files) != 1 || report.Files[0].Path != "src/app.ts" {
+		t.Fatalf("files = %+v, want only src/app.ts", report.Files)
+	}
+	if len(report.UnavailableReasons) != 1 ||
+		!strings.Contains(report.UnavailableReasons[0], "D:") ||
+		!strings.Contains(report.UnavailableReasons[0], "leak.ts") {
+		t.Fatalf("unavailable reasons = %v, want %q", report.UnavailableReasons, outsidePath)
+	}
+}
+
 func TestNormalizeKeyUnsafe(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -287,6 +324,21 @@ func TestNormalizeKeyUnsafe(t *testing.T) {
 				t.Fatalf("normalizeKey(%q) = nil error, want ErrUnsafePath", tc.raw)
 			}
 		})
+	}
+}
+
+func TestFilterGoCoverprofileReturnsScannerError(t *testing.T) {
+	body := []byte("mode: set\n" + strings.Repeat("x", (1<<20)+1))
+	_, err := filterGoCoverprofile(body, "/repo", testModule, newUnsafeCollector())
+	if err == nil {
+		t.Fatal("filterGoCoverprofile returned nil error for an oversized token")
+	}
+}
+
+func TestReadAllBoundedRejectsOversizedInput(t *testing.T) {
+	_, err := readAllBounded(strings.NewReader("12345"), "test", 4)
+	if err == nil || !strings.Contains(err.Error(), "input exceeds 4 byte limit") {
+		t.Fatalf("readAllBounded error = %v, want size-limit error", err)
 	}
 }
 

@@ -3,6 +3,8 @@ package results
 import (
 	"strings"
 	"testing"
+
+	testtranslator "github.com/asynkron/Asynkron.TestTranslator"
 )
 
 // goTestJSONFixture is a real `go test -json` (test2json) event stream covering
@@ -103,5 +105,43 @@ func TestMapFoldsErrorsIntoFailedAndPassedIsRemainder(t *testing.T) {
 	// passed is a derived remainder, never negative for a well-formed stream.
 	if payload.Counts.Passed < 0 {
 		t.Fatalf("passed must not be negative: %+v", payload.Counts)
+	}
+}
+
+func TestMapRecomputesCountsFromCases(t *testing.T) {
+	report := &testtranslator.TestReport{
+		// Deliberately stale totals model a caller-mutated public report.
+		Totals: testtranslator.Totals{Tests: 1},
+		Suites: []testtranslator.TestSuite{{
+			Name: "suite",
+			Cases: []testtranslator.TestCase{{
+				Name:   "failed",
+				Status: testtranslator.StatusFailed,
+			}},
+		}},
+	}
+
+	payload := Map(report)
+	if payload.Counts != (Counts{Total: 1, Failed: 1}) {
+		t.Fatalf("counts = %+v, want one failed test", payload.Counts)
+	}
+	if len(payload.Failures) != 1 || payload.Failures[0].Test != "failed" {
+		t.Fatalf("failures = %+v, want one matching record", payload.Failures)
+	}
+}
+
+func TestMapPreservesInvariantsForUnknownStatusAndNilReport(t *testing.T) {
+	payload := Map(&testtranslator.TestReport{
+		Suites: []testtranslator.TestSuite{{
+			Cases: []testtranslator.TestCase{{Name: "unknown", Status: "custom"}},
+		}},
+	})
+	if payload.Counts != (Counts{Total: 1, Failed: 1}) || len(payload.Failures) != 1 {
+		t.Fatalf("unknown status payload = %+v", payload)
+	}
+
+	empty := Map(nil)
+	if empty.Counts != (Counts{}) || empty.Failures == nil || len(empty.Failures) != 0 {
+		t.Fatalf("nil report payload = %+v, want stable empty payload", empty)
 	}
 }

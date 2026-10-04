@@ -14,10 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Install the module toolchain directly. Auto-switching from Go 1.24 to
+      # 1.25 breaks coverage for packages without tests (golang/go#75031).
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-          check-latest: true
+          go-version-file: go.mod
 
       - name: Verify formatting
         run: |
@@ -41,7 +42,7 @@ jobs:
           ./testtranslator results --format go-test-json --input gotest.jsonl --output junit.xml
           ./testtranslator validate junit --input junit.xml
           ./testtranslator coverage --format go-coverprofile \
-            --input cover.out --go-module github.com/asynkron/testtranslator \
+            --input cover.out --go-module "$(go list -m -f '{{.Path}}')" \
             --output coverage.xml
           ./testtranslator validate cobertura --input coverage.xml
 
@@ -52,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: go.mod
       - name: staticcheck
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest
@@ -65,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: go.mod
       - name: Run each fuzz target briefly
         run: |
           set -e
@@ -83,22 +84,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: go.mod
       - name: Require license and notice files
         run: |
           test -f LICENSE
           test -f NOTICE
           test -f THIRD_PARTY_NOTICES.md
-      - name: Fail on third-party Go module dependencies
-        run: |
-          # The binary must stay self-contained (standard library only).
-          deps=$(go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... \
-            | grep -v '^github.com/asynkron/testtranslator' || true)
-          if [ -n "$deps" ]; then
-            echo "Unexpected third-party dependencies:"
-            echo "$deps"
-            exit 1
-          fi
+      - name: Check Go dependency licenses
+        run: bash .github/scripts/check-go-licenses.sh
       - name: Require PROVENANCE for every real fixture directory
         run: |
           set -e

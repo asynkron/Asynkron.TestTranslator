@@ -1,25 +1,15 @@
-// Package results is the repository-owned native-test translator used by
-// scripts/quality-evidence.mjs. It maps native Go and JUnit reports into the
-// runner-neutral test-results.v1 payload before Faktorial reads the evidence.
-//
-// The emitted payload is validated downstream by
-// qualityevidence.validateTestPayload, whose invariants are:
-//
-//	total == passed + failed + skipped
-//	failed == len(failures) + omitted_failures
-//
-// so every failed/error case MUST yield exactly one failure record.
+// Package results projects native test reports into runner-neutral counts,
+// failure diagnostics, and case observations.
 package results
 
 import (
 	"fmt"
-	testtranslator "github.com/asynkron/Asynkron.TestTranslator"
 	"io"
+
+	testtranslator "github.com/asynkron/Asynkron.TestTranslator"
 )
 
-// testtranslator format ids understood by Parse for the two native producers
-// Faktorial emits: the backend go-test-json stream and per-workspace Vitest
-// JUnit XML reports.
+// Native format identifiers for Go event streams and JUnit XML reports.
 const (
 	FormatGoTestJSON = "go-test-json"
 	FormatJUnitXML   = "junit-xml"
@@ -34,9 +24,8 @@ type Counts struct {
 	Skipped int `json:"skipped"`
 }
 
-// Failure mirrors one entry of the test-results.v1 "failures" array. The field
-// names and omitempty rules match qualityevidence's payload decoder
-// (testresults.Failure): test is always present, the rest are optional.
+// Failure is one entry of the test-results.v1 diagnostics array. Test is
+// always present; suite, file, and message are optional.
 type Failure struct {
 	Suite   string `json:"suite,omitempty"`
 	File    string `json:"file,omitempty"`
@@ -44,18 +33,39 @@ type Failure struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Payload is the test-results.v1 {counts,failures} envelope body. "failures" is
-// always rendered (as [] when empty) to match the JS producer.
+// Payload is the runner-neutral test-results.v1 envelope. Failures and
+// observations are always emitted as arrays, including when empty.
 type Payload struct {
-	Counts   Counts    `json:"counts"`
-	Failures []Failure `json:"failures"`
+	Counts       Counts        `json:"counts"`
+	Failures     []Failure     `json:"failures"`
+	Observations []Observation `json:"observations"`
+}
+
+// Observation preserves a native test case without host-specific identity,
+// redaction, or storage policy. A nil duration means no positive measurement
+// was established by the source model.
+type Observation struct {
+	Suite         string `json:"suite,omitempty"`
+	Class         string `json:"class,omitempty"`
+	File          string `json:"file,omitempty"`
+	Test          string `json:"test"`
+	Status        string `json:"status"`
+	DurationNanos *int64 `json:"duration_nanos"`
+	Message       string `json:"message,omitempty"`
 }
 
 // Parse reads a report of the given format (e.g. "go-test-json") from r via
-// testtranslator and maps it into the test-results.v1 payload. Diagnostics from
-// the translator are intentionally NOT leaked into the payload — parser status
-// and source stay 'quality-evidence'/'ok'/'unparsed' downstream.
+// testtranslator and maps it into test-results.v1. Parser diagnostics remain
+// separate from test failures. Go lifecycle events exclude tests still paused at
+// the end of the stream and preserve bounded compiler output for build failures.
 func Parse(format string, r io.Reader) (*Payload, error) {
+	if format == FormatGoTestJSON {
+		return parseGoTestJSON(r)
+	}
+	return parseTranslatedResults(format, r)
+}
+
+func parseTranslatedResults(format string, r io.Reader) (*Payload, error) {
 	report, _, err := testtranslator.ParseResults(format, r)
 	if err != nil {
 		return nil, err
@@ -72,18 +82,29 @@ func Parse(format string, r io.Reader) (*Payload, error) {
 // the separately stored Totals roll-up. This keeps the payload invariants intact
 // even when a caller supplies a manually constructed or mutated public report.
 //
-// failures[] holds one record for every case counted as failed (including an
-// invalid public status), so counts.failed stays equal to len(failures) as
-// validateTestPayload demands.
+// Failures holds one record for every case counted as failed, including an
+// invalid public status, so Counts.Failed stays equal to len(Failures).
 func Map(report *testtranslator.TestReport) *Payload {
 	if report == nil {
-		return &Payload{Failures: []Failure{}}
+		return &Payload{Failures: []Failure{}, Observations: []Observation{}}
 	}
 
 	counts := Counts{}
 	failures := make([]Failure, 0)
+	observations := make([]Observation, 0)
 	for _, suite := range report.Suites {
 		for _, c := range suite.Cases {
+			observation := Observation{Suite: suite.Name, Class: c.Classname, File: c.File, Test: c.Name, Status: string(c.Status)}
+			if c.DurationNanos > 0 {
+				duration := c.DurationNanos
+				observation.DurationNanos = &duration
+			}
+			if c.Failure != nil {
+				observation.Message = failureMessage(c.Failure)
+			} else if c.Status == testtranslator.StatusSkipped {
+				observation.Message = c.SkipMessage
+			}
+			observations = append(observations, observation)
 			counts.Total++
 			switch c.Status {
 			case testtranslator.StatusPassed:
@@ -113,7 +134,7 @@ func Map(report *testtranslator.TestReport) *Payload {
 		}
 	}
 
-	return &Payload{Counts: counts, Failures: failures}
+	return &Payload{Counts: counts, Failures: failures, Observations: observations}
 }
 
 // failureMessage prefers the richer Details blob and falls back to Message,

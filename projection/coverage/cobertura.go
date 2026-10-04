@@ -17,8 +17,8 @@ import (
 // FormatCobertura identifies a native Cobertura XML coverage report.
 const FormatCobertura = "cobertura-xml"
 
-// Only the class envelope is decoded here for path classification. Native line,
-// branch and method semantics are parsed by the canonical Cobertura adapter.
+// Only the class envelope is decoded here for path classification and method
+// identity. Native line, branch and method semantics use the canonical adapter.
 type coberturaDocument struct {
 	XMLName  xml.Name           `xml:"coverage"`
 	Sources  []string           `xml:"sources>source"`
@@ -30,6 +30,7 @@ type coberturaPackage struct {
 }
 
 type coberturaClass struct {
+	Name     string `xml:"name,attr"`
 	Filename string `xml:"filename,attr"`
 	Body     string `xml:",innerxml"`
 }
@@ -37,7 +38,19 @@ type coberturaClass struct {
 type coberturaFile struct {
 	path    string
 	lines   map[int]testtranslator.LineHit
-	methods map[string]bool
+	methods map[coberturaMethodIdentity]bool
+}
+
+type coberturaMethodIdentity struct {
+	class string
+	name  string // The canonical adapter includes the native method signature.
+}
+
+func (identity coberturaMethodIdentity) symbolName() string {
+	if identity.class == "" {
+		return identity.name
+	}
+	return identity.class + "." + identity.name
 }
 
 // ParseCobertura projects Cobertura into coverage.v1. Unsafe paths are disclosed
@@ -81,7 +94,7 @@ func ParseCobertura(reader io.Reader, repoRoot string) (*Report, error) {
 			}
 			item := files[filename]
 			if item == nil {
-				item = &coberturaFile{path: filename, lines: map[int]testtranslator.LineHit{}, methods: map[string]bool{}}
+				item = &coberturaFile{path: filename, lines: map[int]testtranslator.LineHit{}, methods: map[coberturaMethodIdentity]bool{}}
 				files[filename] = item
 			}
 			for _, file := range native.Files {
@@ -97,7 +110,8 @@ func ParseCobertura(reader io.Reader, repoRoot string) (*Report, error) {
 					item.lines[line.Number] = existing
 				}
 				for _, function := range file.Functions {
-					item.methods[function.Name] = item.methods[function.Name] || function.Hits > 0
+					identity := coberturaMethodIdentity{class: class.Name, name: function.Name}
+					item.methods[identity] = item.methods[identity] || function.Hits > 0
 				}
 			}
 		}
@@ -112,17 +126,23 @@ func ParseCobertura(reader io.Reader, repoRoot string) (*Report, error) {
 			branchesCovered += line.BranchesCovered
 		}
 		functionsTotal, functionsCovered := len(item.methods), 0
-		methodNames := make([]string, 0, len(item.methods))
-		for name, covered := range item.methods {
-			methodNames = append(methodNames, name)
+		methodNames := make([]coberturaMethodIdentity, 0, len(item.methods))
+		for identity, covered := range item.methods {
+			methodNames = append(methodNames, identity)
 			if covered {
 				functionsCovered++
 			}
 		}
-		sort.Strings(methodNames)
+		sort.Slice(methodNames, func(i, j int) bool {
+			left, right := methodNames[i], methodNames[j]
+			if left.symbolName() != right.symbolName() {
+				return left.symbolName() < right.symbolName()
+			}
+			return left.class < right.class
+		})
 		symbols := make([]SymbolCoverage, 0, len(methodNames))
-		for _, name := range methodNames {
-			symbols = append(symbols, SymbolCoverage{Name: name, Kind: "function", Covered: item.methods[name]})
+		for _, identity := range methodNames {
+			symbols = append(symbols, SymbolCoverage{Name: identity.symbolName(), Kind: "function", Covered: item.methods[identity]})
 		}
 		file := FileCoverage{
 			Path: item.path, Language: coberturaLanguage(item.path),

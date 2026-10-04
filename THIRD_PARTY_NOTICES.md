@@ -2,10 +2,19 @@
 
 ## Runtime dependencies
 
-testtranslator is a self-contained binary built against the **Go standard
-library only**. It has no third-party Go module dependencies; `go.mod` declares
-no `require` directives. CI enforces this (see `.github/workflows/ci.yml`, the
-`licenses` job).
+The `cmd/testtranslator` binary uses the **Go standard library only**.
+The reusable `projection/coverage` library additionally imports
+`golang.org/x/tools/cover` from the version of `golang.org/x/tools` recorded in
+`go.mod` (currently v0.48.0). That package is distributed under the Go Authors'
+BSD-3-Clause license with an additional patent grant.
+
+The upstream notices are retained verbatim in
+[LICENSE](.github/licenses/golang.org-x-tools/LICENSE) and
+[PATENTS](.github/licenses/golang.org-x-tools/PATENTS). The `licenses` CI job
+checks that the command has no third-party packages, that the only reviewed
+third-party library package is exactly `golang.org/x/tools/cover`, and that the
+retained license and patent notices match the installed dependency. A dependency
+update that changes either notice requires an explicit notice update.
 
 ## Ported or copied implementation code
 

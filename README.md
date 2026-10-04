@@ -182,3 +182,12 @@ Run `testtranslator formats` for the authoritative, always-current list.
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Library projections
+
+`projection/results` owns runner-independent case observations, Go lifecycle
+completion, bounded compiler diagnostics and JUnit duration/class identity.
+`projection/coverage.ParseCobertura` projects the canonical Cobertura adapter
+into `coverage.v1`, discloses unsafe paths and merges repeated file classes.
+Host task models, producer labels and artifact stores remain caller-owned.
+Malformed native coverage rows follow the canonical parser's strict validation.

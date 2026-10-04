@@ -1,26 +1,12 @@
-// Package coverage is an isolated proof-of-concept (gh7198, continuing the
-// gh7194 research in docs/testing/coverage.md). It translates two real test
-// coverage report formats — Go coverprofiles and Vitest's native Istanbul
-// coverage-final.json — into one shared, filepath-keyed coverage record format
-// ("coverage.v1").
+// Package coverage projects Go coverprofiles, Istanbul coverage-final.json and
+// Cobertura reports into repository-relative, filepath-keyed coverage.v1 records.
+// Format parsing and metric counting use TestTranslator's canonical adapters.
+// The projection reports unsafe or unrooted paths as unavailable and preserves
+// statements separately from line, branch and function metrics.
 //
-// This package is deliberately EXPERIMENT-ONLY. It is not wired into the
-// Faktorial runtime: no database persistence, no HTTP API routes, no scheduler
-// integration, no dashboard UI, and no source-map resolution. It exists so the
-// proposed coverage model can be validated against realistic inputs before any
-// of that runtime work is considered. See docs/testing/coverage.md for the model
-// rationale and the deferred follow-up slices.
-//
-// The stable key is the repository-relative POSIX file path, matching the keys
-// that complexity (codegraph.complexity.v1) and duplication (quickdup.v1)
-// already use, so a future ingester could join the three signals on one column.
-//
-// Format parsing and per-metric counting are delegated to the shared
-// github.com/asynkron/Asynkron.TestTranslator library (its ParseCoverage entry point);
-// this package keeps only the Faktorial-specific concerns: the coverage.v1
-// record shape, the graceful "collect + continue" handling of unsafe paths, and
-// the surfacing of the distinct statements metric alongside the derived line
-// metric.
+// Consumers supply repository context and own persistence, transport and UI.
+// Parsing is independent of those integrations; source-map resolution remains
+// the caller's responsibility.
 package coverage
 
 import (
@@ -44,9 +30,7 @@ import (
 	"golang.org/x/tools/cover"
 )
 
-// SchemaVersion is the shared coverage record schema this PoC emits. It mirrors
-// the naming of ComplexitySchemaVersion ("codegraph.complexity.v1") and
-// quickdup SchemaVersion ("quickdup.v1").
+// SchemaVersion identifies the shared coverage record schema.
 const SchemaVersion = "coverage.v1"
 
 // ErrUnsafePath flags a coverage entry whose file identifier cannot be

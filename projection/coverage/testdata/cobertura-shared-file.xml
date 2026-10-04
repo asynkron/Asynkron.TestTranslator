@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<coverage><packages><package name="P"><classes>
+  <class name="A" filename="Services.cs">
+    <methods><method name="Run" signature="()"><lines><line number="10" hits="1" /></lines></method></methods>
+    <lines><line number="10" hits="1" /></lines>
+  </class>
+  <class name="B" filename="Services.cs">
+    <methods><method name="Run" signature="()"><lines><line number="20" hits="0" /></lines></method></methods>
+    <lines><line number="20" hits="0" /></lines>
+  </class>
+</classes></package></packages></coverage>
